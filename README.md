@@ -48,8 +48,10 @@ It runs on your computer, connects only to the domains you ask for, and sends no
 
 ## Why it exists
 
-It comes out of a study of the certificates of the 1,000 most visited `.es` websites: https://hache-cervera.github.io/research/certificates/
+It comes out of a study of the certificates of the 1,000 most visited `.es` websites. The study, in English: https://hache-cervera.github.io/research/certificates/
 
 ## Licence
 
 MIT, Hache Cervera.
+
+Por qué existe, en español: https://hache-cervera.github.io/research/es/certificados/

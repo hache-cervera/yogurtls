@@ -1,5 +1,4 @@
-// Every user-visible string lives here. The ones from the agreed tables are used as written.
-// Strings marked PROPOSED were not in the agreed tables and wait for approval.
+// Every user-visible string lives here.
 
 const MONTHS = {
   en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -28,7 +27,7 @@ const en = {
     chainComplete: 'complete',
     chainIncomplete: 'incomplete',
     expires: (date, daysLeft) => `${formatDate('en', date)} (${daysLeft === 1 ? '1 day left' : `${daysLeft} days left`})`,
-    expiredAgo: (date, daysAgo) => `${formatDate('en', date)} (expired ${daysAgo === 1 ? '1 day' : `${daysAgo} days`} ago)`, // PROPOSED
+    expiredAgo: (date, daysAgo) => `${formatDate('en', date)} (expired ${daysAgo === 1 ? '1 day' : `${daysAgo} days`} ago)`,
     days: (n) => (n === 1 ? '1 day' : `${n} days`),
   },
   problems: {
@@ -72,7 +71,7 @@ const en = {
     },
     ok100: { what: () => 'Already within the 100-day limit coming in March 2027.', fix: () => '' },
     ok47: { what: () => 'Also within the 47-day limit for 2029.', fix: () => '' },
-    // PROPOSED: after March 2027 and longer than 47 days, a case the tables do not cover.
+    // After March 2027 the next limit is 47 days; this is the case of a certificate that exceeds it.
     over47: {
       what: () => 'From 15 March 2029 certificates will last 47 days at most.',
       fix: () => "If you renew by hand, that's around 8 times a year. Automate it with ACME.",
@@ -116,7 +115,7 @@ const es = {
     chainComplete: 'completa',
     chainIncomplete: 'incompleta',
     expires: (date, daysLeft) => `${formatDate('es', date)} (${daysLeft === 1 ? 'queda 1 día' : `quedan ${daysLeft} días`})`,
-    expiredAgo: (date, daysAgo) => `${formatDate('es', date)} (caducado hace ${daysAgo === 1 ? '1 día' : `${daysAgo} días`})`, // PROPOSED
+    expiredAgo: (date, daysAgo) => `${formatDate('es', date)} (caducado hace ${daysAgo === 1 ? '1 día' : `${daysAgo} días`})`,
     days: (n) => (n === 1 ? '1 día' : `${n} días`),
   },
   problems: {
@@ -160,7 +159,7 @@ const es = {
     },
     ok100: { what: () => 'Ya cumple el límite de 100 días que llega en marzo de 2027.', fix: () => '' },
     ok47: { what: () => 'Ya cumple también el límite de 47 días de 2029.', fix: () => '' },
-    // PROPOSED: after March 2027 and longer than 47 days, a case the tables do not cover.
+    // After March 2027 the next limit is 47 days; this is the case of a certificate that exceeds it.
     over47: {
       what: () => 'Desde el 15 de marzo de 2029, los certificados durarán como mucho 47 días.',
       fix: () => 'Si lo renuevas a mano, serán unas 8 veces al año. Automatízalo con ACME.',
