@@ -1,5 +1,7 @@
 # yogurtls
 
+![yogurTLS](https://raw.githubusercontent.com/hache-cervera/yogurtls/main/assets/banner.png)
+
 Checks the TLS certificate of one or more domains and tells you, in plain language, how it is doing, what changes in 2027 and how to fix what is wrong.
 
 ```

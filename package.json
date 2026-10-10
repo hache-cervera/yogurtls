@@ -1,6 +1,6 @@
 {
   "name": "yogurtls",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Check the TLS certificate of your domains, see what changes in 2027 and how to fix what is wrong.",
   "type": "module",
   "bin": {
