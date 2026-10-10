@@ -1,0 +1,39 @@
+{
+  "name": "yogurtls",
+  "version": "1.0.0",
+  "description": "Check the TLS certificate of your domains, see what changes in 2027 and how to fix what is wrong.",
+  "type": "module",
+  "bin": {
+    "yogurtls": "bin/yogurtls.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "tls",
+    "ssl",
+    "certificate",
+    "https",
+    "expiry",
+    "cli"
+  ],
+  "author": "Hache Cervera",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hache-cervera/yogurtls.git"
+  },
+  "homepage": "https://github.com/hache-cervera/yogurtls#readme",
+  "bugs": {
+    "url": "https://github.com/hache-cervera/yogurtls/issues"
+  }
+}
