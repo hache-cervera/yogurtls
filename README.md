@@ -10,6 +10,8 @@ npx yogurtls yourdomain.com
 
 You need Node.js 20 or newer. Run `npx yogurtls` with nothing else and it asks you for the domain. It answers in Spanish if your system is in Spanish, and in English otherwise.
 
+**Why the name?** Certificates are heading for yogurt-style expiry dates. Not long ago they could last more than a year and you forgot about them; from 2029 they will last 47 days, so you will check the date the way you check the yogurt in the fridge. Hence the logo: a tub with a keyhole on its label.
+
 ## Usage
 
 ```
