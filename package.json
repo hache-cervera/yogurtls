@@ -1,7 +1,7 @@
 {
   "name": "yogurtls",
   "version": "1.1.0",
-  "description": "Check the TLS (SSL) certificate of your domains, see whether it renews on its own, what changes in 2027 and how to fix what is wrong.",
+  "description": "Check the TLS (SSL) certificate of your domains, see what changes in 2027 and how to fix what is wrong.",
   "type": "module",
   "bin": {
     "yogurtls": "bin/yogurtls.js"
@@ -24,8 +24,6 @@
     "certificate",
     "https",
     "expiry",
-    "renewal",
-    "certificate-transparency",
     "letsencrypt",
     "cli"
   ],

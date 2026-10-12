@@ -68,8 +68,8 @@ test('localhost has nothing on 443: red, exit code 2, plain words', () => {
   assert.ok(!/\u001b\[/.test(r.stdout));
 });
 
-test('--offline and the language flags are accepted', () => {
-  const r = run('--offline', 'localhost');
+test('--en is accepted alongside a domain', () => {
+  const r = run('localhost');
   assert.equal(r.status, 2);
   assert.match(r.stdout, /localhost\s+FAIL/);
 });

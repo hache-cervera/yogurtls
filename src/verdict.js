@@ -20,11 +20,11 @@ const ERROR_TO_PROBLEM = {
   UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'incompleteChain',
 };
 
-function calendarNotes(durationDays, now, mode) {
+function calendarNotes(durationDays, now) {
   const upcoming = VALIDITY_SCHEDULE.filter((step) => new Date(step.from) > now);
   if (upcoming.length === 0) return [];
   const next = upcoming[0];
-  if (durationDays > next.maxDays) return [{ id: next.maxDays === 100 ? 'over100' : 'over47', params: { mode } }];
+  if (durationDays > next.maxDays) return [{ id: next.maxDays === 100 ? 'over100' : 'over47' }];
   const notes = [{ id: next.maxDays === 100 ? 'ok100' : 'ok47' }];
   if (next.maxDays === 100 && durationDays <= 47) notes.push({ id: 'ok47' });
   return notes;
@@ -44,11 +44,7 @@ export function judge(result, { warnDays = 14, now = new Date() } = {}) {
   if (ERROR_TO_PROBLEM[code] === 'untrusted' && !result.selfSigned) problems.push({ id: 'untrusted', params: {} });
   const incompleteChain = code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE';
   if (incompleteChain) problems.push({ id: 'incompleteChain', params: {} });
-  const history = result.history && !result.history.error ? result.history : null;
-  // When the history explains why it is about to expire, that explanation replaces the generic one.
-  if (history?.newer) problems.push({ id: 'renewedNotInstalled', params: { issued: history.newer.notBefore } });
-  else if (history?.stalled && !expired) problems.push({ id: 'renewalStalled', params: { every: history.intervalDays, age: history.ageDays } });
-  else if (!expired && result.daysLeft < warnDays) problems.push({ id: 'expiringSoon', params: { days: result.daysLeft } });
+  if (!expired && result.daysLeft < warnDays) problems.push({ id: 'expiringSoon', params: { days: result.daysLeft } });
 
   const found = new Set(problems.map((p) => p.id));
   const explained = code === null || (ERROR_TO_PROBLEM[code] !== undefined && found.has(ERROR_TO_PROBLEM[code]));
@@ -56,8 +52,8 @@ export function judge(result, { warnDays = 14, now = new Date() } = {}) {
 
   const hasRed = problems.some((p) => RED_PROBLEMS.has(p.id));
   const status = hasRed ? 'fail' : problems.length > 0 ? 'warn' : 'good';
-  const notes = expired ? [] : calendarNotes(result.durationDays, now, history?.mode ?? 'unknown');
-  return { status, problems, notes, unhandled, chainComplete: chainStatus(result, incompleteChain), renewal: result.history ?? null };
+  const notes = expired ? [] : calendarNotes(result.durationDays, now);
+  return { status, problems, notes, unhandled, chainComplete: chainStatus(result, incompleteChain) };
 }
 
 // With a self-signed certificate or an unknown authority there is nothing to say about the chain.

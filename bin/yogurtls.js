@@ -5,7 +5,6 @@ import { checkAll, expandTargets, normalizeHost } from '../src/check.js';
 import { judge } from '../src/verdict.js';
 import { renderReport } from '../src/format.js';
 import { messages } from '../src/messages.js';
-import { historiesFor } from '../src/history.js';
 import { renderLogo } from '../src/logo.js';
 import { createInterface } from 'node:readline/promises';
 
@@ -51,7 +50,6 @@ async function main() {
         'warn-days': { type: 'string' },
         es: { type: 'boolean' },
         en: { type: 'boolean' },
-        offline: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -111,11 +109,6 @@ async function main() {
   const results = await checkAll(expandTargets(hosts), { now });
   // A www that does not exist in DNS is not a failure: only hosts the user asked for are reported.
   const shown = results.filter((r) => r.asked || r.failure !== 'ENOTFOUND');
-  if (!values.offline) {
-    if (process.stderr.isTTY) process.stderr.write(m.usage.lookingUp);
-    await historiesFor(shown, { now });
-    if (process.stderr.isTTY) process.stderr.write('\r\u001b[2K');
-  }
   const judged = shown.map((result) => ({ result, verdict: judge(result, { warnDays, now }) }));
 
   const columns = Math.min(process.stdout.columns || 100, 110);
