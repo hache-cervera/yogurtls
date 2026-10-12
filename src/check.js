@@ -81,6 +81,7 @@ function readCertificate(host, socket, now) {
     selfSigned: isSelfIssued(certificate, validationError),
     validationError,
     fingerprint: certificate.fingerprint256 ?? null,
+    serial: certificate.serialNumber ?? null,
   };
 }
 

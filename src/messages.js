@@ -21,7 +21,7 @@ const en = {
   status: { good: 'GOOD', warn: 'WARN', fail: 'FAIL' },
   labels: {
     issuer: 'Issuer', expires: 'Expires', duration: 'Duration', chain: 'Chain',
-    year2027: '2027', what: "What's wrong", fix: 'How to fix', note: 'Note',
+    renewal: 'Renewal', year2027: '2027', what: "What's wrong", fix: 'How to fix', note: 'Note',
   },
   values: {
     chainComplete: 'complete',
@@ -29,6 +29,13 @@ const en = {
     expires: (date, daysLeft) => `${formatDate('en', date)} (${daysLeft === 1 ? '1 day left' : `${daysLeft} days left`})`,
     expiredAgo: (date, daysAgo) => `${formatDate('en', date)} (expired ${daysAgo === 1 ? '1 day' : `${daysAgo} days`} ago)`,
     days: (n) => (n === 1 ? '1 day' : `${n} days`),
+    renewal: (h) => {
+      if (h.error === 'busy') return 'not checked: crt.sh is limiting requests, try again later';
+      if (h.error) return 'not checked: crt.sh did not answer';
+      if (h.mode === 'automatic') return `automatic, every ${h.intervalDays} days or so (${h.renewalsSeen} renewals in the public logs)`;
+      if (h.mode === 'manual') return `looks manual, every ${h.intervalDays} days or so (${h.renewalsSeen} renewals in the public logs)`;
+      return h.renewalsSeen <= 1 ? 'too little history to tell how it renews' : "can't tell how it renews from the history";
+    },
   },
   problems: {
     noHttps: {
@@ -59,6 +66,14 @@ const en = {
       what: () => "The intermediate certificate is missing. Browsers work around it, except a freshly installed Firefox, but curl, apps, integrations and bots will fail.",
       fix: () => "Make your server send the full chain. With certbot, use `fullchain.pem` instead of `cert.pem`. Otherwise, join your certificate and your authority's intermediate in one file.",
     },
+    renewedNotInstalled: {
+      what: ({ issued }) => `A newer certificate was issued on ${formatDate('en', issued)}, but the server still sends the old one.`,
+      fix: () => 'Reload the web server so it picks it up: `sudo systemctl reload nginx` (or `apache2`). Behind a CDN or load balancer, upload it there too. If several servers use this name, the new one may belong to another of them.',
+    },
+    renewalStalled: {
+      what: ({ every, age }) => `It used to renew every ${every} days or so, this certificate is ${age} days old and no newer one is in the public logs.`,
+      fix: () => 'The automatic renewal has probably failed. With certbot, `sudo certbot renew --dry-run` shows the error. Common causes: the domain now points elsewhere, port 80 is closed, or the scheduled job stopped after a move.',
+    },
   },
   notes: {
     apexWwwDiffer: {
@@ -67,14 +82,18 @@ const en = {
     },
     over100: {
       what: () => 'From 15 March 2027 certificates will last 100 days at most, and 47 from 2029.',
-      fix: () => "If you renew by hand, that's at least 4 times a year, and around 8 from 2029. Automate it with ACME.",
+      fix: ({ mode }) => (mode === 'manual'
+        ? "It looks renewed by hand: that will be at least 4 times a year, and around 8 from 2029. Automate it with ACME."
+        : "If you renew by hand, that's at least 4 times a year, and around 8 from 2029. Automate it with ACME."),
     },
     ok100: { what: () => 'Already within the 100-day limit coming in March 2027.', fix: () => '' },
     ok47: { what: () => 'Also within the 47-day limit for 2029.', fix: () => '' },
     // After March 2027 the next limit is 47 days; this is the case of a certificate that exceeds it.
     over47: {
       what: () => 'From 15 March 2029 certificates will last 47 days at most.',
-      fix: () => "If you renew by hand, that's around 8 times a year. Automate it with ACME.",
+      fix: ({ mode }) => (mode === 'manual'
+        ? "It looks renewed by hand: that will be around 8 times a year. Automate it with ACME."
+        : "If you renew by hand, that's around 8 times a year. Automate it with ACME."),
     },
   },
   summary: (green, amber, red) => `${green} green, ${amber} amber, ${red} red.`,
@@ -90,13 +109,16 @@ const en = {
       'Options:',
       '  --file <path>      read domains from a file, one per line (# starts a comment)',
       '  --warn-days <n>    amber when the certificate expires in fewer than n days (default 14)',
-      '  --es               output in Spanish',
+      '  --offline          skip the renewal history (it asks crt.sh, a public log of certificates)',
+      '  --es, --en         language of the output (by default, the language of your system)',
       '  -h, --help         show this help',
       '  -v, --version      show the version',
       '',
       'Exit codes: 0 all green, 1 some amber, 2 some red, 3 usage or internal error.',
     ].join('\n'),
     noDomains: 'yogurtls: no domains given. Try: yogurtls example.com',
+    ask: 'Which domain do you want to check? ',
+    lookingUp: 'Reading the renewal history in the public logs (crt.sh)...',
     badDomain: (raw) => `yogurtls: "${raw}" is not a valid domain name.`,
     portNotSupported: (raw) => `yogurtls: "${raw}" has a port. Only port 443 is checked.`,
     badWarnDays: (raw) => `yogurtls: --warn-days needs a whole number, got "${raw}".`,
@@ -109,7 +131,7 @@ const es = {
   status: { good: 'BIEN', warn: 'OJO', fail: 'MAL' },
   labels: {
     issuer: 'Emisor', expires: 'Caduca', duration: 'Duración', chain: 'Cadena',
-    year2027: '2027', what: 'Qué pasa', fix: 'Cómo se arregla', note: 'Nota',
+    renewal: 'Renovación', year2027: '2027', what: 'Qué pasa', fix: 'Cómo se arregla', note: 'Nota',
   },
   values: {
     chainComplete: 'completa',
@@ -117,6 +139,13 @@ const es = {
     expires: (date, daysLeft) => `${formatDate('es', date)} (${daysLeft === 1 ? 'queda 1 día' : `quedan ${daysLeft} días`})`,
     expiredAgo: (date, daysAgo) => `${formatDate('es', date)} (caducado hace ${daysAgo === 1 ? '1 día' : `${daysAgo} días`})`,
     days: (n) => (n === 1 ? '1 día' : `${n} días`),
+    renewal: (h) => {
+      if (h.error === 'busy') return 'sin comprobar: crt.sh está limitando las consultas, prueba más tarde';
+      if (h.error) return 'sin comprobar: crt.sh no ha respondido';
+      if (h.mode === 'automatic') return `automática, cada ${h.intervalDays} días más o menos (${h.renewalsSeen} renovaciones en los registros públicos)`;
+      if (h.mode === 'manual') return `parece a mano, cada ${h.intervalDays} días más o menos (${h.renewalsSeen} renovaciones en los registros públicos)`;
+      return h.renewalsSeen <= 1 ? 'hay poco historial para saber cómo se renueva' : 'el historial no deja claro cómo se renueva';
+    },
   },
   problems: {
     noHttps: {
@@ -147,6 +176,14 @@ const es = {
       what: () => 'Falta el certificado intermedio. Los navegadores lo suplen, salvo un Firefox recién instalado, pero curl, las apps, las integraciones y los bots darán error.',
       fix: () => 'Configura el servidor para que envíe la cadena completa. Con certbot, usa `fullchain.pem` en vez de `cert.pem`. Si no, une tu certificado y el intermedio de tu autoridad en un solo archivo.',
     },
+    renewedNotInstalled: {
+      what: ({ issued }) => `Hay un certificado más nuevo, emitido el ${formatDate('es', issued)}, pero el servidor sigue enviando el anterior.`,
+      fix: () => 'Recarga el servidor web para que lo use: `sudo systemctl reload nginx` (o `apache2`). Si hay un CDN o un balanceador delante, súbelo allí también. Si varios servidores usan este nombre, puede que el nuevo sea de otro.',
+    },
+    renewalStalled: {
+      what: ({ every, age }) => `Se renovaba cada ${every} días más o menos, este certificado tiene ${age} y no hay ninguno más nuevo en los registros públicos.`,
+      fix: () => 'Lo más probable es que la renovación automática haya fallado. Con certbot, `sudo certbot renew --dry-run` te enseña el error. Causas habituales: el dominio ahora apunta a otro sitio, el puerto 80 está cerrado o la tarea programada dejó de ejecutarse tras una migración.',
+    },
   },
   notes: {
     apexWwwDiffer: {
@@ -155,14 +192,18 @@ const es = {
     },
     over100: {
       what: () => 'Desde el 15 de marzo de 2027, los certificados durarán como mucho 100 días, y 47 desde 2029.',
-      fix: () => 'Si lo renuevas a mano, pasarás a hacerlo al menos 4 veces al año, y unas 8 desde 2029. Automatízalo con ACME.',
+      fix: ({ mode }) => (mode === 'manual'
+        ? 'Parece que lo renuevas a mano: pasarás a hacerlo al menos 4 veces al año, y unas 8 desde 2029. Automatízalo con ACME.'
+        : 'Si lo renuevas a mano, pasarás a hacerlo al menos 4 veces al año, y unas 8 desde 2029. Automatízalo con ACME.'),
     },
     ok100: { what: () => 'Ya cumple el límite de 100 días que llega en marzo de 2027.', fix: () => '' },
     ok47: { what: () => 'Ya cumple también el límite de 47 días de 2029.', fix: () => '' },
     // After March 2027 the next limit is 47 days; this is the case of a certificate that exceeds it.
     over47: {
       what: () => 'Desde el 15 de marzo de 2029, los certificados durarán como mucho 47 días.',
-      fix: () => 'Si lo renuevas a mano, serán unas 8 veces al año. Automatízalo con ACME.',
+      fix: ({ mode }) => (mode === 'manual'
+        ? 'Parece que lo renuevas a mano: serán unas 8 veces al año. Automatízalo con ACME.'
+        : 'Si lo renuevas a mano, serán unas 8 veces al año. Automatízalo con ACME.'),
     },
   },
   summary: (green, amber, red) => `${green} en verde, ${amber} en ámbar, ${red} en rojo.`,
@@ -178,13 +219,16 @@ const es = {
       'Opciones:',
       '  --file <ruta>      lee los dominios de un archivo, uno por línea (# abre un comentario)',
       '  --warn-days <n>    ámbar si caduca en menos de n días (por defecto 14)',
-      '  --es               salida en español',
+      '  --offline          sin historial de renovaciones (se consulta en crt.sh, un registro público de certificados)',
+      '  --es, --en         idioma de la salida (por defecto, el de tu sistema)',
       '  -h, --help         muestra esta ayuda',
       '  -v, --version      muestra la versión',
       '',
       'Códigos de salida: 0 todo en verde, 1 algún ámbar, 2 algún rojo, 3 error de uso o interno.',
     ].join('\n'),
     noDomains: 'yogurtls: no has indicado ningún dominio. Prueba: yogurtls ejemplo.es',
+    ask: '¿Qué dominio quieres comprobar? ',
+    lookingUp: 'Leyendo el historial de renovaciones en los registros públicos (crt.sh)...',
     badDomain: (raw) => `yogurtls: "${raw}" no es un nombre de dominio válido.`,
     portNotSupported: (raw) => `yogurtls: "${raw}" lleva puerto. Solo se comprueba el 443.`,
     badWarnDays: (raw) => `yogurtls: --warn-days necesita un número entero, y has dado "${raw}".`,

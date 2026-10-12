@@ -50,6 +50,7 @@ function hostBlock({ result, verdict }, m, { useColor, columns, labelWidth, host
     if (verdict.chainComplete !== null) {
       add(L.chain, verdict.chainComplete ? m.values.chainComplete : m.values.chainIncomplete);
     }
+    if (verdict.renewal) add(L.renewal, m.values.renewal(verdict.renewal));
   }
   for (const problem of verdict.problems) {
     add(L.what, m.problems[problem.id].what(problem.params));
@@ -58,7 +59,7 @@ function hostBlock({ result, verdict }, m, { useColor, columns, labelWidth, host
   for (const note of verdict.notes) {
     const text = m.notes[note.id];
     // The 2027 fix goes in the same paragraph: a second 'How to fix' label would be mistaken for the problem's.
-    add(L.year2027, [text.what(), text.fix()].filter(Boolean).join(' '));
+    add(L.year2027, [text.what(note.params ?? {}), text.fix(note.params ?? {})].filter(Boolean).join(' '));
   }
   return out;
 }

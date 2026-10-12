@@ -11,7 +11,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
 
 const SAMPLE = {
   host: 'ejemplo.es', names: ['ejemplo.es', 'otro.es'], days: 3, a: 'ejemplo.es', b: 'www.ejemplo.es',
-  validTo: new Date('2026-12-10T00:00:00Z'),
+  validTo: new Date('2026-12-10T00:00:00Z'), issued: new Date('2026-10-01T00:00:00Z'), every: 60, age: 75, mode: 'manual',
 };
 
 function collectStrings(value, out = []) {

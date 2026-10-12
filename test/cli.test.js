@@ -7,8 +7,10 @@ import { join } from 'node:path';
 
 const BIN = new URL('../bin/yogurtls.js', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 
+// English unless the test asks for Spanish, whatever the language of the machine running the tests.
 function run(...args) {
-  return spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
+  const lang = args.includes('--es') ? [] : ['--en'];
+  return spawnSync(process.execPath, [BIN, ...lang, ...args], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
 }
 
 test('without arguments it is a usage error', () => {
@@ -64,4 +66,10 @@ test('localhost has nothing on 443: red, exit code 2, plain words', () => {
   assert.match(r.stdout, /localhost doesn't answer over HTTPS\./);
   assert.match(r.stdout, /0 green, 0 amber, 1 red\./);
   assert.ok(!/\u001b\[/.test(r.stdout));
+});
+
+test('--offline and the language flags are accepted', () => {
+  const r = run('--offline', 'localhost');
+  assert.equal(r.status, 2);
+  assert.match(r.stdout, /localhost\s+FAIL/);
 });
