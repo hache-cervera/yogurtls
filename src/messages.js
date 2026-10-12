@@ -21,6 +21,7 @@ const en = {
   status: { good: 'GOOD', warn: 'WARN', fail: 'FAIL' },
   labels: {
     issuer: 'Issuer', expires: 'Expires', duration: 'Duration', chain: 'Chain',
+    disk: 'On disk', autoRenew: 'Auto-renewal',
     year2027: '2027', what: "What's wrong", fix: 'How to fix', note: 'Note',
   },
   values: {
@@ -29,6 +30,17 @@ const en = {
     expires: (date, daysLeft) => `${formatDate('en', date)} (${daysLeft === 1 ? '1 day left' : `${daysLeft} days left`})`,
     expiredAgo: (date, daysAgo) => `${formatDate('en', date)} (expired ${daysAgo === 1 ? '1 day' : `${daysAgo} days`} ago)`,
     days: (n) => (n === 1 ? '1 day' : `${n} days`),
+    disk: (s) => {
+      if (s.disk.found) return s.match === null ? `${s.disk.path}` : `${s.disk.path} (${s.match ? 'the same one the site sends' : 'not the one the site sends'})`;
+      if (s.disk.denied) return 'not allowed to read the certificates: run it with sudo';
+      if (s.disk.missing || s.disk.invalid) return 'that file is not a readable certificate';
+      return 'not found where certbot or acme.sh keep them. If it lives elsewhere (Docker, a panel), use --cert <file>';
+    },
+    autoRenew: (s) => {
+      if (!s.auto) return s.disk.found ? 'not checked with --cert: a container or a panel would not show up here' : 'not checked: the certificate was not found on this machine';
+      if (!s.auto.checked) return 'not checked: only on Linux';
+      return s.auto.method ? `set up (${s.auto.method})` : 'not found on this machine';
+    },
   },
   problems: {
     noHttps: {
@@ -58,6 +70,18 @@ const en = {
     incompleteChain: {
       what: () => "The intermediate certificate is missing. Browsers work around it, except a freshly installed Firefox, but curl, apps, integrations and bots will fail.",
       fix: () => "Make your server send the full chain. With certbot, use `fullchain.pem` instead of `cert.pem`. Otherwise, join your certificate and your authority's intermediate in one file.",
+    },
+    renewedNotInstalled: {
+      what: ({ path }) => `There is a newer certificate on disk (${path}), but the site still sends the old one.`,
+      fix: () => 'Reload the web server so it uses it: `sudo systemctl reload nginx` (or `apache2`). Behind a CDN or load balancer, upload it there too.',
+    },
+    diskDiffers: {
+      what: ({ path }) => `The certificate the site sends is not the one in ${path}, and the one on disk is not newer.`,
+      fix: () => 'The site may be served by another machine, a CDN or a proxy with its own certificate. Check which server answers for this name.',
+    },
+    noAutoRenewal: {
+      what: () => "I can't find automatic renewal on this machine: no certbot timer and no cron job running certbot or acme.sh.",
+      fix: () => 'With certbot: `sudo systemctl enable --now certbot.timer`, then `sudo certbot renew --dry-run` to test it. If another tool renews it (a panel, a container), this check cannot see it.',
     },
   },
   notes: {
@@ -91,6 +115,10 @@ const en = {
       '  --file <path>      read domains from a file, one per line (# starts a comment)',
       '  --warn-days <n>    amber when the certificate expires in fewer than n days (default 14)',
       '  --es, --en         language of the output (by default, the language of your system)',
+      '  --server           run it on the machine that serves the site: compares the certificate on disk',
+      '                     with the one the site sends, and looks for automatic renewal (Linux)',
+      '  --cert <file>      with --server, the certificate file to compare (if it is not in the usual places)',
+      '  --calendar <file>  save a calendar file (.ics) with a reminder before each certificate expires',
       '  -h, --help         show this help',
       '  -v, --version      show the version',
       '',
@@ -98,6 +126,10 @@ const en = {
     ].join('\n'),
     noDomains: 'yogurtls: no domains given. Try: yogurtls example.com',
     ask: 'Which domain do you want to check? ',
+    certNeedsServer: 'yogurtls: --cert only works with --server.',
+    certOneDomain: 'yogurtls: --cert compares one certificate, so give one domain.',
+    calendarSaved: (n, file) => `Saved ${n === 1 ? '1 reminder' : `${n} reminders`} in ${file}. Import it into your calendar. If you renew, run it again.`,
+    calendarUnwritable: (file) => `yogurtls: cannot write the file "${file}".`,
     badDomain: (raw) => `yogurtls: "${raw}" is not a valid domain name.`,
     portNotSupported: (raw) => `yogurtls: "${raw}" has a port. Only port 443 is checked.`,
     badWarnDays: (raw) => `yogurtls: --warn-days needs a whole number, got "${raw}".`,
@@ -110,6 +142,7 @@ const es = {
   status: { good: 'BIEN', warn: 'OJO', fail: 'MAL' },
   labels: {
     issuer: 'Emisor', expires: 'Caduca', duration: 'Duración', chain: 'Cadena',
+    disk: 'En el disco', autoRenew: 'Renovación',
     year2027: '2027', what: 'Qué pasa', fix: 'Cómo se arregla', note: 'Nota',
   },
   values: {
@@ -118,6 +151,17 @@ const es = {
     expires: (date, daysLeft) => `${formatDate('es', date)} (${daysLeft === 1 ? 'queda 1 día' : `quedan ${daysLeft} días`})`,
     expiredAgo: (date, daysAgo) => `${formatDate('es', date)} (caducado hace ${daysAgo === 1 ? '1 día' : `${daysAgo} días`})`,
     days: (n) => (n === 1 ? '1 día' : `${n} días`),
+    disk: (s) => {
+      if (s.disk.found) return s.match === null ? `${s.disk.path}` : `${s.disk.path} (${s.match ? 'es el mismo que envía la web' : 'no es el que envía la web'})`;
+      if (s.disk.denied) return 'no tengo permiso para leer los certificados: ejecútalo con sudo';
+      if (s.disk.missing || s.disk.invalid) return 'ese archivo no es un certificado que se pueda leer';
+      return 'no está donde lo guardan certbot o acme.sh. Si está en otro sitio (Docker, un panel), usa --cert <archivo>';
+    },
+    autoRenew: (s) => {
+      if (!s.auto) return s.disk.found ? 'sin comprobar con --cert: si la hace un contenedor o un panel, desde aquí no se ve' : 'sin comprobar: no he encontrado el certificado en esta máquina';
+      if (!s.auto.checked) return 'sin comprobar: solo en Linux';
+      return s.auto.method ? `configurada (${s.auto.method})` : 'no la encuentro en esta máquina';
+    },
   },
   problems: {
     noHttps: {
@@ -147,6 +191,18 @@ const es = {
     incompleteChain: {
       what: () => 'Falta el certificado intermedio. Los navegadores lo suplen, salvo un Firefox recién instalado, pero curl, las apps, las integraciones y los bots darán error.',
       fix: () => 'Configura el servidor para que envíe la cadena completa. Con certbot, usa `fullchain.pem` en vez de `cert.pem`. Si no, une tu certificado y el intermedio de tu autoridad en un solo archivo.',
+    },
+    renewedNotInstalled: {
+      what: ({ path }) => `En el disco hay un certificado más nuevo (${path}), pero la web sigue enviando el anterior.`,
+      fix: () => 'Recarga el servidor web para que lo use: `sudo systemctl reload nginx` (o `apache2`). Si hay un CDN o un balanceador delante, súbelo allí también.',
+    },
+    diskDiffers: {
+      what: ({ path }) => `El certificado que envía la web no es el de ${path}, y el del disco no es más nuevo.`,
+      fix: () => 'Puede que la web la sirva otra máquina, un CDN o un proxy con su propio certificado. Comprueba qué servidor responde por ese nombre.',
+    },
+    noAutoRenewal: {
+      what: () => 'No encuentro renovación automática en esta máquina: ni el temporizador de certbot ni una tarea de cron con certbot o acme.sh.',
+      fix: () => 'Con certbot: `sudo systemctl enable --now certbot.timer` y luego `sudo certbot renew --dry-run` para probarla. Si lo renueva otra herramienta (un panel, un contenedor), desde aquí no se ve.',
     },
   },
   notes: {
@@ -180,6 +236,10 @@ const es = {
       '  --file <ruta>      lee los dominios de un archivo, uno por línea (# abre un comentario)',
       '  --warn-days <n>    ámbar si caduca en menos de n días (por defecto 14)',
       '  --es, --en         idioma de la salida (por defecto, el de tu sistema)',
+      '  --servidor         ejecútalo en la máquina que sirve la web: compara el certificado del disco',
+      '                     con el que envía la web y busca la renovación automática (Linux)',
+      '  --cert <archivo>   con --servidor, el certificado a comparar (si no está en el sitio habitual)',
+      '  --calendario <archivo>  guarda un calendario (.ics) con un aviso antes de que caduque cada certificado',
       '  -h, --help         muestra esta ayuda',
       '  -v, --version      muestra la versión',
       '',
@@ -187,6 +247,10 @@ const es = {
     ].join('\n'),
     noDomains: 'yogurtls: no has indicado ningún dominio. Prueba: yogurtls ejemplo.es',
     ask: '¿Qué dominio quieres comprobar? ',
+    certNeedsServer: 'yogurtls: --cert solo funciona con --servidor.',
+    certOneDomain: 'yogurtls: --cert compara un certificado, así que indica un solo dominio.',
+    calendarSaved: (n, file) => `He guardado ${n === 1 ? '1 aviso' : `${n} avisos`} en ${file}. Impórtalo en tu calendario. Si renuevas, vuelve a generarlo.`,
+    calendarUnwritable: (file) => `yogurtls: no se puede escribir el archivo "${file}".`,
     badDomain: (raw) => `yogurtls: "${raw}" no es un nombre de dominio válido.`,
     portNotSupported: (raw) => `yogurtls: "${raw}" lleva puerto. Solo se comprueba el 443.`,
     badWarnDays: (raw) => `yogurtls: --warn-days necesita un número entero, y has dado "${raw}".`,
@@ -196,3 +260,4 @@ const es = {
 };
 
 export const messages = { en, es };
+export const formatDateFor = formatDate;

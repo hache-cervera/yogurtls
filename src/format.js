@@ -50,6 +50,10 @@ function hostBlock({ result, verdict }, m, { useColor, columns, labelWidth, host
     if (verdict.chainComplete !== null) {
       add(L.chain, verdict.chainComplete ? m.values.chainComplete : m.values.chainIncomplete);
     }
+    if (verdict.server) {
+      add(L.disk, m.values.disk(verdict.server));
+      add(L.autoRenew, m.values.autoRenew(verdict.server));
+    }
   }
   for (const problem of verdict.problems) {
     add(L.what, m.problems[problem.id].what(problem.params));

@@ -4,9 +4,12 @@ import { readFileSync } from 'node:fs';
 import { checkAll, expandTargets, normalizeHost } from '../src/check.js';
 import { judge } from '../src/verdict.js';
 import { renderReport } from '../src/format.js';
-import { messages } from '../src/messages.js';
+import { messages, formatDateFor } from '../src/messages.js';
 import { renderLogo } from '../src/logo.js';
 import { createInterface } from 'node:readline/promises';
+import { writeFileSync } from 'node:fs';
+import { findDiskCert, readCertFile, findAutoRenewal, serverFindings } from '../src/server.js';
+import { buildCalendar } from '../src/calendar.js';
 
 const EXIT = { good: 0, warn: 1, fail: 2, error: 3 };
 
@@ -50,6 +53,11 @@ async function main() {
         'warn-days': { type: 'string' },
         es: { type: 'boolean' },
         en: { type: 'boolean' },
+        server: { type: 'boolean' },
+        servidor: { type: 'boolean' },
+        cert: { type: 'string' },
+        calendar: { type: 'string' },
+        calendario: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -69,6 +77,10 @@ async function main() {
     process.stdout.write(`${readVersion()}\n`);
     return;
   }
+
+  const serverMode = Boolean(values.server || values.servidor);
+  const calendarFile = values.calendar ?? values.calendario;
+  if (values.cert !== undefined && !serverMode) return usageError(m.usage.certNeedsServer);
 
   const warnRaw = values['warn-days'];
   const warnDays = warnRaw === undefined ? 14 : Number(warnRaw);
@@ -100,6 +112,8 @@ async function main() {
     if (!hosts.includes(normalized.host)) hosts.push(normalized.host);
   }
 
+  if (values.cert !== undefined && hosts.length !== 1) return usageError(m.usage.certOneDomain);
+
   const now = new Date();
   const useColor = Boolean(process.stdout.isTTY) && !('NO_COLOR' in process.env);
   if (process.stdout.isTTY) {
@@ -109,10 +123,28 @@ async function main() {
   const results = await checkAll(expandTargets(hosts), { now });
   // A www that does not exist in DNS is not a failure: only hosts the user asked for are reported.
   const shown = results.filter((r) => r.asked || r.failure !== 'ENOTFOUND');
+  if (serverMode) {
+    // Automatic renewal is only judged when the certificate was found where certbot or acme.sh keep it.
+    let auto;
+    for (const result of shown) {
+      const disk = values.cert !== undefined ? await readCertFile(values.cert) : await findDiskCert(result.host);
+      if (disk.found && !values.cert && auto === undefined) auto = await findAutoRenewal();
+      result.server = serverFindings(result, disk, disk.found && !values.cert ? auto : null);
+    }
+  }
   const judged = shown.map((result) => ({ result, verdict: judge(result, { warnDays, now }) }));
 
   const columns = Math.min(process.stdout.columns || 100, 110);
   process.stdout.write(`${renderReport(judged, lang, { useColor, columns, now })}\n`);
+  if (calendarFile !== undefined) {
+    const { text, count } = buildCalendar(shown, { lang, warnDays, now, formatDate: (d) => formatDateFor(lang, d) });
+    try {
+      writeFileSync(calendarFile, text);
+      process.stdout.write(`\n${m.usage.calendarSaved(count, calendarFile)}\n`);
+    } catch {
+      return usageError(m.usage.calendarUnwritable(calendarFile));
+    }
+  }
 
   let worst = 'good';
   for (const { result, verdict } of judged) {

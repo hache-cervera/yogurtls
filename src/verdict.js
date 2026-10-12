@@ -45,6 +45,10 @@ export function judge(result, { warnDays = 14, now = new Date() } = {}) {
   const incompleteChain = code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE';
   if (incompleteChain) problems.push({ id: 'incompleteChain', params: {} });
   if (!expired && result.daysLeft < warnDays) problems.push({ id: 'expiringSoon', params: { days: result.daysLeft } });
+  // Server mode: what is on this machine's disk, compared with what the site sends.
+  const srv = result.server;
+  if (srv && srv.match === false) problems.push({ id: srv.diskNewer ? 'renewedNotInstalled' : 'diskDiffers', params: { path: srv.disk.path, issued: srv.disk.leaf.validFrom } });
+  if (srv && srv.auto && srv.auto.checked && srv.auto.method === null) problems.push({ id: 'noAutoRenewal', params: { tool: srv.disk.tool } });
 
   const found = new Set(problems.map((p) => p.id));
   const explained = code === null || (ERROR_TO_PROBLEM[code] !== undefined && found.has(ERROR_TO_PROBLEM[code]));
@@ -53,7 +57,7 @@ export function judge(result, { warnDays = 14, now = new Date() } = {}) {
   const hasRed = problems.some((p) => RED_PROBLEMS.has(p.id));
   const status = hasRed ? 'fail' : problems.length > 0 ? 'warn' : 'good';
   const notes = expired ? [] : calendarNotes(result.durationDays, now);
-  return { status, problems, notes, unhandled, chainComplete: chainStatus(result, incompleteChain) };
+  return { status, problems, notes, unhandled, chainComplete: chainStatus(result, incompleteChain), server: srv ?? null };
 }
 
 // With a self-signed certificate or an unknown authority there is nothing to say about the chain.
