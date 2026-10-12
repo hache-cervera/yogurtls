@@ -8,7 +8,7 @@ import { X509Certificate } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
-import path from 'node:path';
+import { posix as path } from 'node:path';
 
 const PEM = /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/;
 
@@ -34,7 +34,16 @@ export function readLeaf(text) {
     validFrom: new Date(x509.validFrom),
     validTo: new Date(x509.validTo),
     names: namesOf(x509),
+    issuer: issuerOrg(x509.issuer),
   };
+}
+
+// The organisation (O=) of the issuer, as the TLS check reports it for the served certificate.
+function issuerOrg(text) {
+  const lines = String(text ?? '').split('\n');
+  const o = lines.find((l) => l.startsWith('O='));
+  const cn = lines.find((l) => l.startsWith('CN='));
+  return o ? o.slice(2) : cn ? cn.slice(3) : null;
 }
 
 // Where certbot and acme.sh keep certificates. Each folder may hold one certificate for several names.
@@ -132,5 +141,9 @@ export function serverFindings(served, disk, auto) {
   if (!disk.found) return { ...out, match: null };
   if (!served.connected || !served.fingerprint) return { ...out, match: null };
   const match = disk.leaf.fingerprint === served.fingerprint;
-  return { ...out, match, diskNewer: !match && disk.leaf.validFrom > served.validFrom };
+  if (match) return { ...out, match };
+  // A different authority means another system answers in front (a CDN such as Cloudflare, or a proxy):
+  // the two certificates are not two versions of the same one, so their dates say nothing about renewal.
+  if (served.issuer && disk.leaf.issuer && served.issuer !== disk.leaf.issuer) return { ...out, match, inFront: true };
+  return { ...out, match, diskNewer: disk.leaf.validFrom > served.validFrom };
 }

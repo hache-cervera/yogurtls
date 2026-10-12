@@ -31,8 +31,9 @@ const en = {
     expiredAgo: (date, daysAgo) => `${formatDate('en', date)} (expired ${daysAgo === 1 ? '1 day' : `${daysAgo} days`} ago)`,
     days: (n) => (n === 1 ? '1 day' : `${n} days`),
     disk: (s) => {
+      if (s.disk.found && s.inFront) return `${s.disk.path} (from another authority: something else answers in front, such as a CDN like Cloudflare or a proxy, so the two are not compared)`;
       if (s.disk.found) return s.match === null ? `${s.disk.path}` : `${s.disk.path} (${s.match ? 'the same one the site sends' : 'not the one the site sends'})`;
-      if (s.disk.denied) return 'not allowed to read the certificates: run it with sudo';
+      if (s.disk.denied) return 'not allowed to read them: run it with sudo. If your certificates live elsewhere (Docker, a panel), use --cert <file>';
       if (s.disk.missing || s.disk.invalid) return 'that file is not a readable certificate';
       return 'not found where certbot or acme.sh keep them. If it lives elsewhere (Docker, a panel), use --cert <file>';
     },
@@ -152,8 +153,9 @@ const es = {
     expiredAgo: (date, daysAgo) => `${formatDate('es', date)} (caducado hace ${daysAgo === 1 ? '1 día' : `${daysAgo} días`})`,
     days: (n) => (n === 1 ? '1 día' : `${n} días`),
     disk: (s) => {
+      if (s.disk.found && s.inFront) return `${s.disk.path} (es de otra autoridad: delante responde otro sistema, como un CDN tipo Cloudflare o un proxy, así que no se comparan)`;
       if (s.disk.found) return s.match === null ? `${s.disk.path}` : `${s.disk.path} (${s.match ? 'es el mismo que envía la web' : 'no es el que envía la web'})`;
-      if (s.disk.denied) return 'no tengo permiso para leer los certificados: ejecútalo con sudo';
+      if (s.disk.denied) return 'no tengo permiso para leerlos: ejecútalo con sudo. Si tus certificados están en otro sitio (Docker, un panel), usa --cert <archivo>';
       if (s.disk.missing || s.disk.invalid) return 'ese archivo no es un certificado que se pueda leer';
       return 'no está donde lo guardan certbot o acme.sh. Si está en otro sitio (Docker, un panel), usa --cert <archivo>';
     },

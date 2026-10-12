@@ -47,7 +47,7 @@ export function judge(result, { warnDays = 14, now = new Date() } = {}) {
   if (!expired && result.daysLeft < warnDays) problems.push({ id: 'expiringSoon', params: { days: result.daysLeft } });
   // Server mode: what is on this machine's disk, compared with what the site sends.
   const srv = result.server;
-  if (srv && srv.match === false) problems.push({ id: srv.diskNewer ? 'renewedNotInstalled' : 'diskDiffers', params: { path: srv.disk.path, issued: srv.disk.leaf.validFrom } });
+  if (srv && srv.match === false && !srv.inFront) problems.push({ id: srv.diskNewer ? 'renewedNotInstalled' : 'diskDiffers', params: { path: srv.disk.path, issued: srv.disk.leaf.validFrom } });
   if (srv && srv.auto && srv.auto.checked && srv.auto.method === null) problems.push({ id: 'noAutoRenewal', params: { tool: srv.disk.tool } });
 
   const found = new Set(problems.map((p) => p.id));

@@ -26,7 +26,7 @@ const DIRS = [{ base: '/etc/letsencrypt/live', file: 'fullchain.pem', tool: 'cer
 
 function served(pem) {
   const leaf = readLeaf(pem);
-  return { host: 'ejemplo.es', connected: true, issuer: 'Test', validFrom: leaf.validFrom, validTo: leaf.validTo,
+  return { host: 'ejemplo.es', connected: true, issuer: leaf.issuer, validFrom: leaf.validFrom, validTo: leaf.validTo,
     daysLeft: Math.floor((leaf.validTo - NOW) / 86_400_000), durationDays: 90, names: leaf.names, nameMatches: true,
     selfSigned: false, validationError: null, fingerprint: leaf.fingerprint };
 }
@@ -146,4 +146,24 @@ test('a cron line for acme.sh or certbot counts; a commented one does not', asyn
 
 test('off Linux it does not look', async () => {
   assert.deepEqual(await findAutoRenewal({ platform: 'win32' }), { checked: false });
+});
+
+test('behind a CDN (another authority in front), a newer certificate on disk is not "renewed but not reloaded"', () => {
+  // The case found on a real server: Cloudflare sends its own certificate, the origin keeps a Let's Encrypt one.
+  const disk = { found: true, path: '/p', tool: null, leaf: readLeaf(NEW) };
+  const site = { ...served(OLD), issuer: 'Google Trust Services' };
+  const s = serverFindings(site, disk, null);
+  assert.equal(s.inFront, true);
+  const v = judge({ ...site, server: s }, { now: NOW });
+  assert.ok(!v.problems.some((p) => p.id === 'renewedNotInstalled' || p.id === 'diskDiffers'));
+  assert.equal(v.status, 'good');
+  const text = renderReport([{ result: { ...site, server: s }, verdict: v }], 'es', { now: NOW, columns: 300 });
+  assert.match(text, /delante responde otro sistema, como un CDN tipo Cloudflare/);
+  assert.ok(!/systemctl reload/.test(text));
+});
+
+test('without permission it also points to --cert, since the certificates may live elsewhere', () => {
+  const s = serverFindings(served(NEW), { found: false, denied: true }, null);
+  const text = renderReport([{ result: { ...served(NEW), server: s }, verdict: judge({ ...served(NEW), server: s }, { now: NOW }) }], 'es', { now: NOW, columns: 300 });
+  assert.match(text, /ejecútalo con sudo\. Si tus certificados están en otro sitio \(Docker, un panel\), usa --cert/);
 });
