@@ -15,6 +15,14 @@ const DEPLOY_GRACE_DAYS = 3;
 const AUTOMATIC_MAX_INTERVAL = 100;
 // How many recent renewals are used to work out the rhythm.
 const RECENT_RENEWALS = 6;
+// Renewals this far apart, more than once, look like a person doing it (or a tool asking for long certificates).
+const MANUAL_MIN_INTERVAL = 150;
+// More certificates than this issued together, or valid at once, is a CDN or a fleet of servers:
+// the history no longer tells the story of one certificate. The study of 1,000 .es sites failed on exactly this.
+const MAX_PER_RENEWAL = 2;
+const MAX_VALID_AT_ONCE = 3;
+// Authorities that only issue through ACME or renew for you: a long rhythm with them is not a person.
+const AUTOMATIC_ISSUERS = [/let's encrypt/i, /google trust services/i, /zerossl/i, /certainly/i, /amazon/i, /buypass/i];
 
 export function normalizeSerial(serial) {
   if (!serial) return null;
@@ -64,8 +72,11 @@ function renewals(certificates) {
   const groups = [];
   for (const certificate of certificates) {
     const last = groups[groups.length - 1];
-    if (last && (certificate.notBefore - last.at) / DAY_MS <= SAME_RENEWAL_DAYS) continue;
-    groups.push({ at: certificate.notBefore });
+    if (last && (certificate.notBefore - last.at) / DAY_MS <= SAME_RENEWAL_DAYS) {
+      last.count++;
+      continue;
+    }
+    groups.push({ at: certificate.notBefore, count: 1 });
   }
   return groups;
 }
@@ -73,40 +84,49 @@ function renewals(certificates) {
 /**
  * served: { serial, validFrom, issuer } of the certificate the server sends.
  * certificates: parsed history (see parseEntries).
- * Returns { mode, intervalDays, renewalsSeen, newer, stalled } where
- *   mode is 'automatic' | 'manual' | 'unknown',
+ * Returns { mode, reason, intervalDays, renewalsSeen, newer, stalled, ageDays } where
+ *   mode is 'automatic' | 'manual' | 'unknown' (reason says why: 'short', 'many', 'notFound', 'unclear'),
  *   newer is a logged certificate newer than the served one, from the same issuer, or null,
  *   stalled is true when an automatic renewal is overdue and nothing newer is logged.
+ * It only concludes when the history is clean; otherwise it says it cannot tell.
  */
 export function analyzeHistory(served, certificates, now = new Date()) {
   const servedSerial = normalizeSerial(served.serial);
   const history = certificates.filter((c) => c.notBefore <= now);
   const groups = renewals(history);
+  const ageDays = Math.floor((now - served.validFrom) / DAY_MS);
+  const base = { intervalDays: null, renewalsSeen: groups.length, newer: null, stalled: false, ageDays };
+  const unknown = (reason) => ({ ...base, mode: 'unknown', reason });
+
+  // If the certificate the server sends is not in the logs we got, the logs are incomplete for this name.
+  if (!history.some((c) => c.serial === servedSerial)) return unknown('notFound');
+  const validNow = history.filter((c) => c.notAfter > now).length;
+  if (groups.some((g) => g.count > MAX_PER_RENEWAL) || validNow > MAX_VALID_AT_ONCE) return unknown('many');
+  if (groups.length < 3) return unknown('short');
+
   const recent = groups.slice(-RECENT_RENEWALS - 1);
   const intervals = [];
   for (let i = 1; i < recent.length; i++) intervals.push(Math.round((recent[i].at - recent[i - 1].at) / DAY_MS));
+  const intervalDays = median(intervals);
+  const automaticIssuer = AUTOMATIC_ISSUERS.some((re) => re.test(served.issuer ?? ''));
 
   let mode = 'unknown';
-  let intervalDays = null;
-  if (intervals.length >= 2 || (intervals.length === 1 && intervals[0] > AUTOMATIC_MAX_INTERVAL)) {
-    intervalDays = median(intervals);
-    mode = intervalDays <= AUTOMATIC_MAX_INTERVAL ? 'automatic' : 'manual';
-  }
+  if (intervalDays <= AUTOMATIC_MAX_INTERVAL && intervals.filter((d) => d <= AUTOMATIC_MAX_INTERVAL).length >= 2) mode = 'automatic';
+  else if (intervals.every((d) => d >= MANUAL_MIN_INTERVAL) && !automaticIssuer) mode = 'manual';
+  if (mode === 'unknown') return { ...unknown('unclear'), intervalDays };
 
   // Only the same issuer counts: CDNs keep backup certificates from another authority that they never serve.
-  const servedFrom = served.validFrom;
   const newerCandidates = history.filter((c) => c.serial !== servedSerial
-    && c.notBefore - servedFrom > SAME_RENEWAL_DAYS * DAY_MS
+    && c.notBefore - served.validFrom > SAME_RENEWAL_DAYS * DAY_MS
     && (now - c.notBefore) / DAY_MS >= DEPLOY_GRACE_DAYS
     && c.notAfter > now
     && (!served.issuer || !c.issuer || c.issuer === served.issuer));
   const newer = newerCandidates.length ? newerCandidates[newerCandidates.length - 1] : null;
 
-  const ageDays = Math.floor((now - servedFrom) / DAY_MS);
-  const slack = intervalDays === null ? 0 : Math.max(7, Math.round(intervalDays * 0.15));
+  const slack = Math.max(7, Math.round(intervalDays * 0.15));
   const stalled = mode === 'automatic' && !newer && ageDays > intervalDays + slack;
 
-  return { mode, intervalDays, renewalsSeen: groups.length, newer, stalled, ageDays };
+  return { ...base, mode, reason: null, intervalDays, newer, stalled };
 }
 
 export async function fetchHistory(identity, { timeoutMs = 25_000, fetchImpl = globalThis.fetch } = {}) {

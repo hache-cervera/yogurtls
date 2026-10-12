@@ -186,3 +186,37 @@ test('the apex and the www with the same certificate make one lookup', async () 
   assert.equal(calls, 1);
   assert.equal(www.history.mode, 'automatic');
 });
+
+test('if the served certificate is not in the logs, it does not conclude anything', () => {
+  const certs = parseEntries(automaticRows('2026-09-01'), 'ejemplo.es');
+  const h = analyzeHistory({ serial: 'DEAD', validFrom: new Date('2026-09-01T00:00:00Z'), issuer: "Let's Encrypt" }, certs, NOW);
+  assert.equal(h.mode, 'unknown');
+  assert.equal(h.reason, 'notFound');
+  assert.equal(h.newer, null);
+  assert.equal(h.stalled, false);
+});
+
+test('many certificates at once (a CDN or a fleet) is not read as one story', () => {
+  const rows = automaticRows('2026-09-01');
+  for (const s of ['e1', 'e2', 'e3']) rows.push(row(s, '2026-09-02', 90));
+  const certs = parseEntries(rows, 'ejemplo.es');
+  const h = analyzeHistory({ serial: '0A5', validFrom: new Date('2026-09-01T00:00:00Z'), issuer: "Let's Encrypt" }, certs, NOW);
+  assert.equal(h.reason, 'many');
+  assert.equal(h.newer, null);
+});
+
+test("Let's Encrypt with long gaps is never called manual: that is what broke the study", () => {
+  const rows = [row('1', '2025-01-10', 90), row('2', '2025-07-01', 90), row('3', '2026-01-05', 90), row('4', '2026-08-20', 90)];
+  const certs = parseEntries(rows, 'ejemplo.es');
+  const h = analyzeHistory({ serial: '4', validFrom: new Date('2026-08-20T00:00:00Z'), issuer: "Let's Encrypt" }, certs, NOW);
+  assert.notEqual(h.mode, 'manual');
+  assert.equal(h.reason, 'unclear');
+});
+
+test('one long gap alone is not enough to say manual', () => {
+  const issuer = 'C=US, O=DigiCert Inc, CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1';
+  const rows = [row('1', '2025-03-30', 365, issuer), row('2', '2026-03-28', 199, issuer)];
+  const certs = parseEntries(rows, 'ejemplo.es');
+  const h = analyzeHistory({ serial: '2', validFrom: new Date('2026-03-28T00:00:00Z'), issuer: 'DigiCert Inc' }, certs, NOW);
+  assert.equal(h.mode, 'unknown');
+});

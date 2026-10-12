@@ -1,3 +1,7 @@
 node_modules/
 *.tgz
 .DS_Store
+
+# Validation output: has domain names
+validation/
+*.detail.csv

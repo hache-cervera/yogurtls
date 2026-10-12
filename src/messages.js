@@ -34,7 +34,10 @@ const en = {
       if (h.error) return 'not checked: crt.sh did not answer';
       if (h.mode === 'automatic') return `automatic, every ${h.intervalDays} days or so (${h.renewalsSeen} renewals in the public logs)`;
       if (h.mode === 'manual') return `looks manual, every ${h.intervalDays} days or so (${h.renewalsSeen} renewals in the public logs)`;
-      return h.renewalsSeen <= 1 ? 'too little history to tell how it renews' : "can't tell how it renews from the history";
+      if (h.reason === 'notFound') return "can't tell: the certificate it sends is not in what crt.sh returned";
+      if (h.reason === 'many') return "can't tell: many certificates at once (a CDN or several servers)";
+      if (h.reason === 'short') return 'too little history to tell how it renews';
+      return "can't tell how it renews from the history";
     },
   },
   problems: {
@@ -144,7 +147,10 @@ const es = {
       if (h.error) return 'sin comprobar: crt.sh no ha respondido';
       if (h.mode === 'automatic') return `automática, cada ${h.intervalDays} días más o menos (${h.renewalsSeen} renovaciones en los registros públicos)`;
       if (h.mode === 'manual') return `parece a mano, cada ${h.intervalDays} días más o menos (${h.renewalsSeen} renovaciones en los registros públicos)`;
-      return h.renewalsSeen <= 1 ? 'hay poco historial para saber cómo se renueva' : 'el historial no deja claro cómo se renueva';
+      if (h.reason === 'notFound') return 'no se puede saber: el certificado que envía no aparece en lo que devuelve crt.sh';
+      if (h.reason === 'many') return 'no se puede saber: hay muchos certificados a la vez (un CDN o varios servidores)';
+      if (h.reason === 'short') return 'hay poco historial para saber cómo se renueva';
+      return 'el historial no deja claro cómo se renueva';
     },
   },
   problems: {

@@ -38,7 +38,7 @@ for (const [host, status, expected] of CASES) {
 test('the command line gives exit code 2 for an expired certificate', (t) => {
   if (!online) return t.skip('no network');
   const bin = new URL('../bin/yogurtls.js', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-  const r = spawnSync(process.execPath, [bin, 'expired.badssl.com'], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
+  const r = spawnSync(process.execPath, [bin, '--en', '--offline', 'expired.badssl.com'], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
   assert.equal(r.status, 2);
   assert.match(r.stdout, /FAIL/);
 });
