@@ -2,6 +2,8 @@
 
 ![yogurTLS](https://raw.githubusercontent.com/hache-cervera/yogurtls/main/assets/banner.png)
 
+[![npm version](https://img.shields.io/npm/v/yogurtls)](https://www.npmjs.com/package/yogurtls) [![licence](https://img.shields.io/github/license/hache-cervera/yogurtls)](LICENSE) [![node](https://img.shields.io/node/v/yogurtls)](https://nodejs.org)
+
 Free and open source. Checks the TLS (SSL) certificate of one or more domains and tells you, in plain language, how it is doing, what changes in 2027 and how to fix what is wrong.
 
 ```
